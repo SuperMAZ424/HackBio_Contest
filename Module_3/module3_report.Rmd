@@ -1,0 +1,145 @@
+---
+title: "Module 3"
+author: "Zaki"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read the data
+
+Data were downloaded and saved on my local machine in a new folder. So, the first step was to change the working directory to the new one using:
+
+```{r}
+setwd("D:/Courses/HackBio_Contest/module_3/")
+```
+
+
+The second step is to read the data and save them into a variable:
+```{r}
+data = read.table("humanGeneticVariationsSamples.tsv", sep = " ", header = T)
+```
+
+# Question 1
+
+### How many SNPs are significant (p-value < 0.01) for variability in height(MAF > 0.01) in all the super populations.
+
+To answer this question data were filtered using the following code according to the mentioned parameters.
+
+```{r}
+q1subdata = data[data$EFFECT_ALLELE_FREQ > 0.01 & data$P < 0.01,]
+```
+
+To determine if the data slicing is done properly by knowing the range of the required parameters
+```{r}
+range(q1subdata$EFFECT_ALLELE_FREQ)
+range(q1subdata$P)
+```
+
+To determine the number of SNPs that pass the filtration step. Hence, answering the question.
+```{r}
+print(length(q1subdata$SNPID))
+```
+
+For further insights about how these SNPs are distributed within ancestry data, the data are separated according ancestory and plotted.
+
+```{r}
+#separate the data according to ancestry
+distribution_table = table(as.factor(q1subdata$ANCESTRY))
+
+#plot the number of SNPs in each ancestory 
+barplot(distribution_table, ylim = c(0, max(distribution_table)*1.20), ylab="Number of SNPs")
+```
+
+# Question 2
+
+### How much of Europeans genetic variability can/cannot be found in other super populations. Does this provide enough argument for increasing the diversity of sequencing projects
+
+To answer this question, data were separated into European and non-European ancestory, then counting the number of SNPs that are found in both European and non-European (Repeated SNPs) and the unique SNPs that are found in Europeans only.
+```{r}
+#separate the data
+euroSNP = data[data$ANCESTRY == "EUROPEAN",]
+otherSNP = data[data$ANCESTRY != "EUROPEAN",]
+
+#define the counting variables
+found = 0
+notfound = 0
+
+#do the counting process
+for (i in euroSNP$RSID){
+  if (i %in% otherSNP$RSID){
+    found = found + 1
+  }else{
+    notfound = notfound + 1
+  }
+}
+
+# calculate the percent
+percent_found_SNP = found/length(euroSNP$RSID)*100
+percent_notfound_SNP = notfound/length(euroSNP$RSID)*100
+
+#define the plot variable
+bp = barplot(c(percent_notfound_SNP, percent_found_SNP), 
+names.arg = c("Unique SNPs", "Repeated SNPs"), ylim = c(0,100), ylab = "Percent", 
+xlab = "SNPs")
+
+#add the percent
+text(bp, 5, c(sub("$","%",percent_notfound_SNP), sub("$","%",percent_found_SNP)))
+```
+
+To get more insights about the importance of increasing the diversity, the SNPs were counted then SNPs with single, double and triple  occurance were plotted as the following:
+
+```{r}
+#generate a table of the RSID to determine which is repeated
+RSID_table = table(as.factor(data$RSID))
+
+#count
+unique_SNPs_no = length(RSID_table[RSID_table == 1])
+double_SNPs_no = length(RSID_table[RSID_table == 2])
+tripl_SNPs_no = length(RSID_table[RSID_table == 3])
+
+#plot the number of occurrence of each SNP
+plt = plot(RSID_table, ylab = "Number of Occurance")
+text(2000,2.7,"unique")
+text(2000, 2.5, unique_SNPs_no)
+text(2000, 2.3, sub("$","%", round(unique_SNPs_no*100/length(RSID_table),2)))
+text(7000,2.7,"doubles")
+text(7000, 2.5, double_SNPs_no)
+text(7000, 2.3, sub("$","%", round(double_SNPs_no*100/length(RSID_table),2)))
+text(12000,2.7,"triples")
+text(12000, 2.5, tripl_SNPs_no)
+text(12000, 2.3, sub("$","%", round(tripl_SNPs_no*100/length(RSID_table),2)))
+
+```
+
+From the calculation and plot, it is found that most sequencing projects in the data got unique SNPs (99.14%) and single SNP were found repeated three times with RSID `rs9370683`
+```{r}
+RSID_table[RSID_table == 3]
+```
+
+**From the previous, it is highly suggested that increasing the diversity of samples provides more unique data.**
+
+**_____________________________________________________________________________________**
+
+#### during investigationg the data, a question raise into my head which is: "Is SNPs on a specific chromosome correlates with height?"
+
+To answer the question, I wrote the following code:
+```{r}
+#plot the distribution of SNPs across each chromosome and their count.
+
+plot("", xlim = c(0, 2.7e+08), ylim= c(1,23), yaxp = c(1,22,21),
+     xlab= "Position", ylab="Choromosome", las = 1, cex.axis = 0.8 )
+abline(h = seq(1, 22, by = 1), col = "lightgray", lty = "solid")
+
+points(data$POS, data$CHR)
+for (i in 1:length(as.data.frame(table(as.factor(data$CHR)))[,2])) {
+  text(2.65e+08,i+0.3, as.data.frame(table(as.factor(data$CHR)))[i,2])
+}
+text(2.65e+08,23.3,"Count")
+```
+
+After plotting the data it is not clear if SNPs on specific chromosome have a major effect on the height, the difference in the counts may be attributed to the difference in chromosome size.
+
+
